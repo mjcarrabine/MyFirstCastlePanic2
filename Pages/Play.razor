@@ -174,64 +174,70 @@ else if (engine != null && engine.State != null)
 		}
 	</ul>
 
-	<h2>Player Hands</h2>
 
-	@for (int i = 0; engine != null && engine.State != null && i < engine.State.PlayerHands.Count; i++)
-	{
-		<div style="@(i == engine.State.CurrentPlayer ? "background-color: #e3f2fd; border: 2px solid #1976d2; padding: 0.5em; margin-bottom: 0.5em;" : "margin-bottom: 0.5em;")">
-			<strong>Player @(i+1):</strong>
-			<div style="display: flex; flex-direction: row; gap: 0.5em; align-items: flex-start; margin-top: 0.5em;">
-				@for (int j = 0; engine != null && engine.State != null && j < engine.State.PlayerHands[i].Count; j++)
-				{
-					var card = engine.State.PlayerHands[i][j];
-					var cardIdx = j;
-					var playerIdxForButton = i;
-					var cardIdxForButton = cardIdx;
-					<div @onmouseover="() => HighlightSpaceForCard(card)" @onmouseout="ClearHighlight"
-						 style="min-width: 90px; min-height: 60px; padding: 0.5em; margin: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; box-sizing: border-box; border-radius: 8px; background: #fff; box-shadow: 0 1px 4px #bbb; cursor: pointer; @(selectedCardIndex == cardIdx && selectedPlayerIndex == i ? "background-color: #fff3cd; border: 3px solid #ff5722; box-shadow: 0 0 8px #ff9800;" : "border: 1px solid #ccc;")">
-						@if (card.Color.HasValue && card.Shape.HasValue)
+	<section style="margin-top:2em; padding:1em; background:#f8f9fa; border-radius:10px; box-shadow:0 1px 6px #ccc;">
+		<h2>Player Hands</h2>
+		@if (engine != null && engine.State != null)
+		{
+			@for (int i = 0; i < engine.State.PlayerHands.Count; i++)
+			{
+				<div style="@(i == engine.State.CurrentPlayer ? "background-color: #e3f2fd; border: 2px solid #1976d2; padding: 0.5em; margin-bottom: 0.5em;" : "margin-bottom: 0.5em;")">
+					<strong>Player @(i+1):</strong>
+					<div style="display: flex; flex-direction: row; gap: 0.5em; align-items: flex-start; margin-top: 0.5em;">
+						@for (int j = 0; j < engine.State.PlayerHands[i].Count; j++)
 						{
-							<span style="display: flex; align-items: center; gap: 0.3em;">
-								<span style="@GetColorStyle(card.Color.Value)">@card.Color</span>
-								<span style="@GetColorStyle(card.Color.Value)">@GetShapeIcon(card.Shape.Value)</span>
-							</span>
-						}
-						else if (card.IsHero)
-						{
-							<span style="font-weight:bold;">Hero: @card.Name</span>
-						}
-						else if (card.IsAnyColor && card.Shape.HasValue)
-						{
-							<span style="display: flex; align-items: center; gap: 0.3em; font-weight:bold;">
-								@card.Shape
-								@foreach (var color in new[] { MyFirstCastlePanic.GameLogic.CardColor.Blue, MyFirstCastlePanic.GameLogic.CardColor.Green, MyFirstCastlePanic.GameLogic.CardColor.Red })
+							var card = engine.State.PlayerHands[i][j];
+							var cardIdx = j;
+							var playerIdxForButton = i;
+							var cardIdxForButton = cardIdx;
+							<div @onmouseover="() => HighlightSpaceForCard(card)" @onmouseout="ClearHighlight"
+								 style="min-width: 90px; min-height: 60px; padding: 0.5em; margin: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; box-sizing: border-box; border-radius: 8px; background: #fff; box-shadow: 0 1px 4px #bbb; cursor: pointer; @(selectedCardIndex == cardIdx && selectedPlayerIndex == i ? "background-color: #fff3cd; border: 3px solid #ff5722; box-shadow: 0 0 8px #ff9800;" : "border: 1px solid #ccc;")">
+								@if (card.Color.HasValue && card.Shape.HasValue)
 								{
-									<span style="@GetColorStyle(color)">@GetShapeIcon(card.Shape.Value)</span>
+									<span style="display: flex; align-items: center; gap: 0.3em;">
+										<span style="@GetColorStyle(card.Color.Value)">@card.Color</span>
+										<span style="@GetColorStyle(card.Color.Value)">@GetShapeIcon(card.Shape.Value)</span>
+									</span>
 								}
-							</span>
-						}
-						else if (card.IsUtility)
-						{
-							<span style="font-weight:bold;">Utility: @card.Name</span>
-						}
-						else
-						{
-							<span>@card.Name</span>
-						}
-						@if (phase == TurnPhase.Action)
-						{
-							<button @onclick="() => SelectCardForPlayer(playerIdxForButton, cardIdxForButton)" style="margin-top: 0.3em;">Play Card</button>
+								else if (card.IsHero)
+								{
+									<span style="font-weight:bold;">Hero: @card.Name</span>
+								}
+								else if (card.IsAnyColor && card.Shape.HasValue)
+								{
+									<span style="display: flex; align-items: center; gap: 0.3em; font-weight:bold;">
+										@card.Shape
+										@foreach (var color in new[] { MyFirstCastlePanic.GameLogic.CardColor.Blue, MyFirstCastlePanic.GameLogic.CardColor.Green, MyFirstCastlePanic.GameLogic.CardColor.Red })
+										{
+											<span style="@GetColorStyle(color)">@GetShapeIcon(card.Shape.Value)</span>
+										}
+									</span>
+								}
+								else if (card.IsUtility)
+								{
+									<span style="font-weight:bold;">Utility: @card.Name</span>
+								}
+								else
+								{
+									<span>@card.Name</span>
+								}
+								@if (phase == TurnPhase.Action)
+								{
+									<button @onclick="() => SelectCardForPlayer(playerIdxForButton, cardIdxForButton)" style="margin-top: 0.3em;">Play Card</button>
+								}
+							</div>
 						}
 					</div>
-				}
+				</div>
+			}
+			<div style="margin-top:1.5em; display:flex; gap:1em;">
+				<button @onclick="DrawCardForCurrentPlayer" disabled="@(phase != TurnPhase.DrawCard)">Draw Card</button>
+				<button @onclick="MoveMonstersPhase" disabled="@(phase != TurnPhase.Action)">Move Monsters</button>
+				<button @onclick="DrawMonsterPhase" disabled="@(phase != TurnPhase.DrawMonster)">Draw Monster</button>
+				<button @onclick="() => { if (engine != null) engine.CheckGameOver(); }">Check Game Over</button>
 			</div>
-		</div>
-	}
-
-	<button @onclick="DrawCardForCurrentPlayer" disabled="@(phase != TurnPhase.DrawCard)">Draw Card</button>
-	<button @onclick="MoveMonstersPhase" disabled="@(phase != TurnPhase.Action)">Move Monsters</button>
-	<button @onclick="DrawMonsterPhase" disabled="@(phase != TurnPhase.DrawMonster)">Draw Monster</button>
-	<button @onclick="() => { if (engine != null) engine.CheckGameOver(); }">Check Game Over</button>
+		}
+	</section>
 }
 
 @code {

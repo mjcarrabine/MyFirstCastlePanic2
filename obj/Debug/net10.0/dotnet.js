@@ -5,7 +5,7 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
   "mainAssemblyName": "MyFirstCastlePanic",
   "applicationEnvironment": "Development",
   "resources": {
-    "hash": "sha256-eTsyqNJjitP3den6GstfqBXA/G/r4ANFKeu+oOAiHzw=",
+    "hash": "sha256-VWgxCiHjH9O4pYHKPBvUZMJIfYXZZVFN6cbCEg4Y9is=",
     "jsModuleNative": [
       {
         "name": "dotnet.native.87vtjjdetb.js"
@@ -1242,16 +1242,16 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
       },
       {
         "virtualPath": "MyFirstCastlePanic.wasm",
-        "name": "MyFirstCastlePanic.4cz75is2t9.wasm",
-        "integrity": "sha256-pJtoz/6VdZ0pNDMnY5+OMFuaYPOFEHYQbD7XamePupg=",
+        "name": "MyFirstCastlePanic.p9y9qhd2tc.wasm",
+        "integrity": "sha256-Q1wMIlufjVrcCJD9yo9zZy3o0fmUJHWbYeybVnU0yeY=",
         "cache": "force-cache"
       }
     ],
     "pdb": [
       {
         "virtualPath": "MyFirstCastlePanic.pdb",
-        "name": "MyFirstCastlePanic.jiacnld84s.pdb",
-        "integrity": "sha256-O3s/Uue5J1wts28vCNRHtT1tMe1yEHM3XU+dj1VykAA=",
+        "name": "MyFirstCastlePanic.qp5x2m11ms.pdb",
+        "integrity": "sha256-0rrndCgo0Lmpi3dLT1Hk0uk9/fzjVrn/ok21ABMidGI=",
         "cache": "force-cache"
       }
     ],
