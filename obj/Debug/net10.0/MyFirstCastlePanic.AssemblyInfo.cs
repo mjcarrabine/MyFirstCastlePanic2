@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MyFirstCastlePanic")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d7dc3e37849596ff2e31fe69f5e903378ae8055c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d4ec4ecce4f345cfda0b8ab040dee9fe6bb38ba5")]
 [assembly: System.Reflection.AssemblyProductAttribute("MyFirstCastlePanic")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MyFirstCastlePanic")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
