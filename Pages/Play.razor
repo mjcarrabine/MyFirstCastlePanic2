@@ -43,16 +43,17 @@ else if (engine != null && engine.State != null)
 		{
 			var hasMonster = (engine != null && engine.State != null) ? engine.State.MonstersOnBoard.Any(m => m.SpaceIndex == space.Index) : false;
 			var showPlayButton = false;
-			CastleCard? selectedCard = null;
-				   if (phase == TurnPhase.Action && selectedCardIndex.HasValue && engine != null && engine.State != null)
-				   {
-					   int idx = selectedCardIndex.GetValueOrDefault();
-					   if (engine.State.PlayerHands[engine.State.CurrentPlayer].Count > idx)
-					   {
-						   selectedCard = engine.State.PlayerHands[engine.State.CurrentPlayer][idx];
-						   showPlayButton = hasMonster && CanPlayCardOnSpace(selectedCard, space);
-					   }
-				   }
+			CastleCard? cardToPlay = null;
+			if (phase == TurnPhase.Action && selectedCardIndex.HasValue && selectedPlayerIndex.HasValue && engine != null && engine.State != null)
+			{
+				int pIdx = selectedPlayerIndex.Value;
+				int cIdx = selectedCardIndex.Value;
+				if (pIdx >= 0 && pIdx < engine.State.PlayerHands.Count && cIdx >= 0 && cIdx < engine.State.PlayerHands[pIdx].Count)
+				{
+					cardToPlay = engine.State.PlayerHands[pIdx][cIdx];
+					showPlayButton = hasMonster && CanPlayCardOnSpace(cardToPlay, space);
+				}
+			}
 			<li style="@(highlightedSpaceIndices.Contains(space.Index) ? "background-color: yellow;" : "")">
 				@space.Index: <span style="@GetColorStyle(space.Color)">@space.Color</span> <span style="@GetColorStyle(space.Color)">@GetShapeIcon(space.Shape)</span>
 				<span>
@@ -62,7 +63,7 @@ else if (engine != null && engine.State != null)
 					}
 					@if (showPlayButton)
 					{
-						   <button @onclick="() => { if (selectedCardIndex.HasValue && engine != null && engine.State != null) PlayCardOnSpace(selectedCardIndex.Value, space.Index); }">Play Card</button>
+						<button @onclick="() => { if (selectedCardIndex.HasValue && selectedPlayerIndex.HasValue && engine != null && engine.State != null) PlayCardOnSpace(selectedPlayerIndex.Value, selectedCardIndex.Value, space.Index); }">Catch Monster</button>
 					}
 				</span>
 			</li>
@@ -72,14 +73,14 @@ else if (engine != null && engine.State != null)
 	<h2>Player Hands</h2>
 	@for (int i = 0; engine != null && engine.State != null && i < engine.State.PlayerCount; i++)
 	{
-		<div>
+		<div style="@(i == engine.State.CurrentPlayer ? "background-color: #e3f2fd; border: 2px solid #1976d2; padding: 0.5em; margin-bottom: 0.5em;" : "margin-bottom: 0.5em;")">
 			<strong>Player @(i+1):</strong>
 			<ul>
 				@for (int j = 0; engine != null && engine.State != null && j < engine.State.PlayerHands[i].Count; j++)
 				{
 					var card = engine.State.PlayerHands[i][j];
 					var cardIdx = j;
-					<li @onmouseover="() => HighlightSpaceForCard(card)" @onmouseout="ClearHighlight" style="@((selectedCardIndex == cardIdx && i == engine.State.CurrentPlayer) ? "background-color: #fff3cd; border: 3px solid #ff5722; box-shadow: 0 0 8px #ff9800;" : "border: 1px solid #ccc;")">
+					<li @onmouseover="() => HighlightSpaceForCard(card)" @onmouseout="ClearHighlight" style="@((selectedCardIndex == cardIdx && selectedPlayerIndex == i) ? "background-color: #fff3cd; border: 3px solid #ff5722; box-shadow: 0 0 8px #ff9800;" : "border: 1px solid #ccc;")">
 						<span style="color: #888; font-size: 0.9em; margin-right: 0.5em;">[Index: @cardIdx]</span>
 						@if (card.Color.HasValue && card.Shape.HasValue)
 						{
@@ -106,7 +107,10 @@ else if (engine != null && engine.State != null)
 						{
 							<span>@card.Name</span>
 						}
-						<button @onclick="() => SelectCardForPlayer(i, cardIdx)">Select</button>
+						@if (phase == TurnPhase.Action)
+						{
+							<button @onclick="() => SelectCardForPlayer(i, cardIdx)">Play Card</button>
+						}
 						<span style="color:#888; font-size:0.8em;">(SelectCardForPlayer(@i, @cardIdx))</span>
 					</li>
 				}
@@ -205,7 +209,7 @@ else if (engine != null && engine.State != null)
 		StateHasChanged();
 	}
 	GameEngine? engine = null;
-	int playerCount = 2;
+	int playerCount = 4;
 	bool started = false;
 
 	void StartGame()
@@ -235,14 +239,19 @@ else if (engine != null && engine.State != null)
 		StateHasChanged();
 	}
 
-	void PlayCardOnSpace(int cardIndex, int spaceIndex)
+	void PlayCardOnSpace(int playerIndex, int cardIndex, int spaceIndex)
 	{
 		if (phase == TurnPhase.Action && engine != null && engine.State != null)
 		{
-			bool played = engine.PlayCardOnSpace(engine.State.CurrentPlayer, cardIndex, spaceIndex);
+			if (playerIndex < 0 || playerIndex >= engine.State.PlayerHands.Count)
+				return;
+			if (cardIndex < 0 || cardIndex >= engine.State.PlayerHands[playerIndex].Count)
+				return;
+			bool played = engine.PlayCardOnSpace(playerIndex, cardIndex, spaceIndex);
 			if (played)
 			{
 				selectedCardIndex = null;
+				selectedPlayerIndex = null;
 				// Remain in Action phase so Move Monsters is still active
 			}
 			StateHasChanged();
@@ -282,5 +291,5 @@ else if (engine != null && engine.State != null)
 			StateHasChanged();
 		}
 	}
-	}
+}
 

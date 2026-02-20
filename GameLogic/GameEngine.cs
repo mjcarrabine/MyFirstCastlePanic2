@@ -53,8 +53,25 @@ namespace MyFirstCastlePanic.GameLogic
             var space = State.BoardSpaces.FirstOrDefault(s => s.Index == spaceIndex);
             if (space == null)
                 return false;
-            // Find a monster on this space
+
+            // Find a monster on this space (default)
             var monster = State.MonstersOnBoard.FirstOrDefault(m => m.SpaceIndex == spaceIndex);
+
+            // Utility Boot card: can catch any monster on the board
+            if (card.IsUtility && card.Name != null && card.Name.ToLower().Contains("boot"))
+            {
+                // If there is at least one monster, remove the first one found
+                if (State.MonstersOnBoard.Count == 0)
+                    return false;
+                monster = State.MonstersOnBoard.FirstOrDefault();
+                if (monster == null)
+                    return false;
+                State.MonstersOnBoard.Remove(monster);
+                State.PlayerHands[player].RemoveAt(cardIndex);
+                DrawCard(player);
+                return true;
+            }
+
             if (monster == null)
                 return false;
             // Card/space matching logic
