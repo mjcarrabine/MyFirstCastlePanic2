@@ -22,9 +22,17 @@ else if (engine != null && engine.State != null)
 	<div style="background:#eee; padding:0.5em; margin-bottom:1em;">
 		<strong>DEBUG:</strong><br />
 		Phase: @phase<br />
+		Selected Player Index: @selectedPlayerIndex<br />
 		Selected Card Index: @selectedCardIndex<br />
-		Current Player Hand Count: @(engine != null && engine.State != null ? engine.State.PlayerHands[engine.State.CurrentPlayer].Count : 0)<br />
-		Selected Card: @(selectedCardIndex.HasValue && engine != null && engine.State != null && engine.State.PlayerHands[engine.State.CurrentPlayer].Count > selectedCardIndex.GetValueOrDefault() ? engine.State.PlayerHands[engine.State.CurrentPlayer][selectedCardIndex.GetValueOrDefault()].Name : "None")<br />
+		@if (selectedPlayerIndex.HasValue && selectedCardIndex.HasValue && engine != null && engine.State != null && selectedPlayerIndex.Value >= 0 && selectedPlayerIndex.Value < engine.State.PlayerHands.Count && selectedCardIndex.Value >= 0 && selectedCardIndex.Value < engine.State.PlayerHands[selectedPlayerIndex.Value].Count)
+		{
+			var debugCard = engine.State.PlayerHands[selectedPlayerIndex.Value][selectedCardIndex.Value];
+			<div>Selected Card: @debugCard.Name (Color: @debugCard.Color, Shape: @debugCard.Shape, Hero: @debugCard.IsHero, AnyColor: @debugCard.IsAnyColor, Utility: @debugCard.IsUtility)</div>
+		}
+		else
+		{
+			<div>Selected Card: None</div>
+		}
 		<br />
 		<strong>Monsters on Board:</strong>
 		<ul>
@@ -36,6 +44,26 @@ else if (engine != null && engine.State != null)
 					<li>Monster: @m.Type @(m.IsStarred ? "★" : "") on Space @m.SpaceIndex (@(space != null ? space.Color + " " + space.Shape : "Unknown"))</li>
 				}
 			}
+		</ul>
+		<strong>Board Spaces (for Catch Monster diagnosis):</strong>
+		<ul>
+		@if (engine != null && engine.State != null && selectedPlayerIndex.HasValue && selectedCardIndex.HasValue)
+		{
+			var pIdx = selectedPlayerIndex.Value;
+			var cIdx = selectedCardIndex.Value;
+			CastleCard? cardToPlay = null;
+			if (pIdx >= 0 && pIdx < engine.State.PlayerHands.Count && cIdx >= 0 && cIdx < engine.State.PlayerHands[pIdx].Count)
+			{
+				cardToPlay = engine.State.PlayerHands[pIdx][cIdx];
+			}
+			foreach (var space in engine.State.BoardSpaces)
+			{
+				var hasMonster = engine.State.MonstersOnBoard.Any(m => m.SpaceIndex == space.Index);
+				var canPlay = cardToPlay != null && CanPlayCardOnSpace(cardToPlay, space);
+				var isUtility = cardToPlay != null && cardToPlay.IsUtility;
+				<li>Space @space.Index: Monster? @hasMonster, CanPlay? @canPlay, Utility? @isUtility, ShowButton? @(hasMonster && (canPlay || isUtility))</li>
+			}
+		}
 		</ul>
 	</div>
 	<ul>
@@ -51,7 +79,13 @@ else if (engine != null && engine.State != null)
 				if (pIdx >= 0 && pIdx < engine.State.PlayerHands.Count && cIdx >= 0 && cIdx < engine.State.PlayerHands[pIdx].Count)
 				{
 					cardToPlay = engine.State.PlayerHands[pIdx][cIdx];
+					// Show button if there is a monster and the card can be played on this space
 					showPlayButton = hasMonster && CanPlayCardOnSpace(cardToPlay, space);
+					// For utility cards (e.g., Boot), allow button on any space with a monster
+					if (cardToPlay != null && cardToPlay.IsUtility && hasMonster)
+					{
+						showPlayButton = true;
+					}
 				}
 			}
 			<li style="@(highlightedSpaceIndices.Contains(space.Index) ? "background-color: yellow;" : "")">
@@ -71,17 +105,19 @@ else if (engine != null && engine.State != null)
 	</ul>
 
 	<h2>Player Hands</h2>
+
 	@for (int i = 0; engine != null && engine.State != null && i < engine.State.PlayerCount; i++)
 	{
 		<div style="@(i == engine.State.CurrentPlayer ? "background-color: #e3f2fd; border: 2px solid #1976d2; padding: 0.5em; margin-bottom: 0.5em;" : "margin-bottom: 0.5em;")">
 			<strong>Player @(i+1):</strong>
-			<ul>
+			<div style="display: flex; flex-direction: row; gap: 0.5em; align-items: flex-start; margin-top: 0.5em;">
 				@for (int j = 0; engine != null && engine.State != null && j < engine.State.PlayerHands[i].Count; j++)
 				{
 					var card = engine.State.PlayerHands[i][j];
 					var cardIdx = j;
-					<li @onmouseover="() => HighlightSpaceForCard(card)" @onmouseout="ClearHighlight" style="@((selectedCardIndex == cardIdx && selectedPlayerIndex == i) ? "background-color: #fff3cd; border: 3px solid #ff5722; box-shadow: 0 0 8px #ff9800;" : "border: 1px solid #ccc;")">
-						<span style="color: #888; font-size: 0.9em; margin-right: 0.5em;">[Index: @cardIdx]</span>
+					<div @onmouseover="() => HighlightSpaceForCard(card)" @onmouseout="ClearHighlight"
+						 style="min-width: 90px; min-height: 60px; padding: 0.5em; margin: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; box-sizing: border-box; border-radius: 8px; background: #fff; box-shadow: 0 1px 4px #bbb; cursor: pointer; @(selectedCardIndex == cardIdx && selectedPlayerIndex == i ? "background-color: #fff3cd; border: 3px solid #ff5722; box-shadow: 0 0 8px #ff9800;" : "border: 1px solid #ccc;")">
+						<span style="color: #888; font-size: 0.9em; margin-bottom: 0.2em;">[Index: @cardIdx]</span>
 						@if (card.Color.HasValue && card.Shape.HasValue)
 						{
 							<span style="@GetColorStyle(card.Color.Value)">@card.Color</span>
@@ -109,12 +145,12 @@ else if (engine != null && engine.State != null)
 						}
 						@if (phase == TurnPhase.Action)
 						{
-							<button @onclick="() => SelectCardForPlayer(i, cardIdx)">Play Card</button>
+							<button @onclick="() => SelectCardForPlayer(i, cardIdx)" style="margin-top: 0.3em;">Play Card</button>
 						}
 						<span style="color:#888; font-size:0.8em;">(SelectCardForPlayer(@i, @cardIdx))</span>
-					</li>
+					</div>
 				}
-			</ul>
+			</div>
 		</div>
 	}
 
@@ -147,6 +183,7 @@ else if (engine != null && engine.State != null)
 			var card = engine.State.PlayerHands[playerIndex][cardIndex];
 			HighlightSpaceForCard(card);
 		}
+		// Ensure UI updates so Catch Monster button appears
 		StateHasChanged();
 	}
 	// GetPhaseLabel removed
