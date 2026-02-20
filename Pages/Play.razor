@@ -19,11 +19,81 @@ else if (engine != null && engine.State != null)
 	<!-- Phase indicator removed -->
 	<h2>Board Spaces</h2>
 
-	<div style="background:#eee; padding:0.5em; margin-bottom:1em;">
+	<div style="background:#eee; padding:0.5em; margin-bottom:1em;" id="debug-output-section">
+		<button @onclick="CopyDebugOutput" style="float:right; margin-bottom:0.5em;">Copy Debug Output</button>
+		@code {
+			[Inject] private IJSRuntime JS { get; set; } = default!;
+
+			private string? selectCardDebugTrace = null;
+
+			private async Task CopyDebugOutput()
+			{
+				// Get the debug output as plain text
+				var debugText = GetDebugOutputText();
+				await JS.InvokeVoidAsync("navigator.clipboard.writeText", debugText);
+			}
+
+			private string GetDebugOutputText()
+			{
+				var sb = new System.Text.StringBuilder();
+				sb.AppendLine($"Phase: {phase}");
+				sb.AppendLine($"Selected Player Index: {selectedPlayerIndex}");
+				sb.AppendLine($"Selected Card Index: {selectedCardIndex}");
+				if (selectedPlayerIndex.HasValue && selectedCardIndex.HasValue && engine != null && engine.State != null && selectedPlayerIndex.Value >= 0 && selectedPlayerIndex.Value < engine.State.PlayerHands.Count && selectedCardIndex.Value >= 0 && selectedCardIndex.Value < engine.State.PlayerHands[selectedPlayerIndex.Value].Count)
+				{
+					var debugCard = engine.State.PlayerHands[selectedPlayerIndex.Value][selectedCardIndex.Value];
+					sb.AppendLine($"Selected Card: {debugCard.Name} (Color: {debugCard.Color}, Shape: {debugCard.Shape}, Hero: {debugCard.IsHero}, AnyColor: {debugCard.IsAnyColor}, Utility: {debugCard.IsUtility})");
+				}
+				else
+				{
+					sb.AppendLine("Selected Card: None");
+				}
+				sb.AppendLine();
+				sb.AppendLine("Monsters on Board:");
+				if (engine != null && engine.State != null)
+				{
+					foreach (var m in engine.State.MonstersOnBoard)
+					{
+						var space = engine.State.BoardSpaces.FirstOrDefault(s => s.Index == m.SpaceIndex);
+						sb.AppendLine($"Monster: {m.Type}{(m.IsStarred ? " ★" : "")} on Space {m.SpaceIndex} ({(space != null ? space.Color + " " + space.Shape : "Unknown")})");
+					}
+				}
+				sb.AppendLine("Board Spaces (for Catch Monster diagnosis):");
+				if (engine != null && engine.State != null && selectedPlayerIndex.HasValue && selectedCardIndex.HasValue)
+				{
+					var pIdx = selectedPlayerIndex.Value;
+					var cIdx = selectedCardIndex.Value;
+					CastleCard? cardToPlay = null;
+					if (pIdx >= 0 && pIdx < engine.State.PlayerHands.Count && cIdx >= 0 && cIdx < engine.State.PlayerHands[pIdx].Count)
+					{
+						cardToPlay = engine.State.PlayerHands[pIdx][cIdx];
+					}
+					foreach (var space in engine.State.BoardSpaces)
+					{
+						var hasMonster = engine.State.MonstersOnBoard.Any(m => m.SpaceIndex == space.Index);
+						var canPlay = cardToPlay != null && CanPlayCardOnSpace(cardToPlay, space);
+						var isUtility = cardToPlay != null && cardToPlay.IsUtility;
+						sb.AppendLine($"Space {space.Index}: Monster? {hasMonster}, CanPlay? {canPlay}, Utility? {isUtility}, ShowButton? {hasMonster && (canPlay || isUtility)}");
+					}
+				}
+				return sb.ToString();
+			}
+		}
+		@if (!string.IsNullOrEmpty(selectCardError))
+		{
+			<div style="color: red; font-weight: bold;">@selectCardError</div>
+		}
 		<strong>DEBUG:</strong><br />
 		Phase: @phase<br />
 		Selected Player Index: @selectedPlayerIndex<br />
 		Selected Card Index: @selectedCardIndex<br />
+		@if (!string.IsNullOrEmpty(selectCardDebugTrace))
+		{
+			<div style="color: #1976d2; font-size: 0.95em; margin-bottom: 0.5em;">@selectCardDebugTrace</div>
+		}
+		<div style="color:#1976d2; font-size:0.95em; margin-bottom:0.5em;">
+			PlayerHands.Count: @(engine?.State?.PlayerHands.Count ?? -1)
+		</div>
 		@if (selectedPlayerIndex.HasValue && selectedCardIndex.HasValue && engine != null && engine.State != null && selectedPlayerIndex.Value >= 0 && selectedPlayerIndex.Value < engine.State.PlayerHands.Count && selectedCardIndex.Value >= 0 && selectedCardIndex.Value < engine.State.PlayerHands[selectedPlayerIndex.Value].Count)
 		{
 			var debugCard = engine.State.PlayerHands[selectedPlayerIndex.Value][selectedCardIndex.Value];
@@ -106,7 +176,7 @@ else if (engine != null && engine.State != null)
 
 	<h2>Player Hands</h2>
 
-	@for (int i = 0; engine != null && engine.State != null && i < engine.State.PlayerCount; i++)
+	@for (int i = 0; engine != null && engine.State != null && i < engine.State.PlayerHands.Count; i++)
 	{
 		<div style="@(i == engine.State.CurrentPlayer ? "background-color: #e3f2fd; border: 2px solid #1976d2; padding: 0.5em; margin-bottom: 0.5em;" : "margin-bottom: 0.5em;")">
 			<strong>Player @(i+1):</strong>
@@ -115,13 +185,16 @@ else if (engine != null && engine.State != null)
 				{
 					var card = engine.State.PlayerHands[i][j];
 					var cardIdx = j;
+					var playerIdxForButton = i;
+					var cardIdxForButton = cardIdx;
 					<div @onmouseover="() => HighlightSpaceForCard(card)" @onmouseout="ClearHighlight"
 						 style="min-width: 90px; min-height: 60px; padding: 0.5em; margin: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; box-sizing: border-box; border-radius: 8px; background: #fff; box-shadow: 0 1px 4px #bbb; cursor: pointer; @(selectedCardIndex == cardIdx && selectedPlayerIndex == i ? "background-color: #fff3cd; border: 3px solid #ff5722; box-shadow: 0 0 8px #ff9800;" : "border: 1px solid #ccc;")">
-						<span style="color: #888; font-size: 0.9em; margin-bottom: 0.2em;">[Index: @cardIdx]</span>
 						@if (card.Color.HasValue && card.Shape.HasValue)
 						{
-							<span style="@GetColorStyle(card.Color.Value)">@card.Color</span>
-							<span style="@GetColorStyle(card.Color.Value)">@GetShapeIcon(card.Shape.Value)</span>
+							<span style="display: flex; align-items: center; gap: 0.3em;">
+								<span style="@GetColorStyle(card.Color.Value)">@card.Color</span>
+								<span style="@GetColorStyle(card.Color.Value)">@GetShapeIcon(card.Shape.Value)</span>
+							</span>
 						}
 						else if (card.IsHero)
 						{
@@ -129,11 +202,13 @@ else if (engine != null && engine.State != null)
 						}
 						else if (card.IsAnyColor && card.Shape.HasValue)
 						{
-							<span style="font-weight:bold;">Any-Color: @card.Name</span>
-							@foreach (var color in new[] { MyFirstCastlePanic.GameLogic.CardColor.Blue, MyFirstCastlePanic.GameLogic.CardColor.Green, MyFirstCastlePanic.GameLogic.CardColor.Red })
-							{
-								<span style="@GetColorStyle(color)">@GetShapeIcon(card.Shape.Value)</span>
-							}
+							<span style="display: flex; align-items: center; gap: 0.3em; font-weight:bold;">
+								@card.Shape
+								@foreach (var color in new[] { MyFirstCastlePanic.GameLogic.CardColor.Blue, MyFirstCastlePanic.GameLogic.CardColor.Green, MyFirstCastlePanic.GameLogic.CardColor.Red })
+								{
+									<span style="@GetColorStyle(color)">@GetShapeIcon(card.Shape.Value)</span>
+								}
+							</span>
 						}
 						else if (card.IsUtility)
 						{
@@ -145,9 +220,8 @@ else if (engine != null && engine.State != null)
 						}
 						@if (phase == TurnPhase.Action)
 						{
-							<button @onclick="() => SelectCardForPlayer(i, cardIdx)" style="margin-top: 0.3em;">Play Card</button>
+							<button @onclick="() => SelectCardForPlayer(playerIdxForButton, cardIdxForButton)" style="margin-top: 0.3em;">Play Card</button>
 						}
-						<span style="color:#888; font-size:0.8em;">(SelectCardForPlayer(@i, @cardIdx))</span>
 					</div>
 				}
 			</div>
@@ -172,14 +246,29 @@ else if (engine != null && engine.State != null)
 	int? selectedPlayerIndex = null;
 
 	// Allow selecting any card from any player
+	string? selectCardError = null;
 	void SelectCardForPlayer(int playerIndex, int cardIndex)
 	{
+		selectCardError = null;
 		selectedPlayerIndex = playerIndex;
 		selectedCardIndex = cardIndex;
-		if (engine != null && engine.State != null
-			&& playerIndex >= 0 && playerIndex < engine.State.PlayerHands.Count
-			&& cardIndex >= 0 && cardIndex < engine.State.PlayerHands[playerIndex].Count)
+		selectCardDebugTrace = $"SelectCardForPlayer called: playerIndex={playerIndex}, cardIndex={cardIndex} | After set: selectedPlayerIndex={selectedPlayerIndex}, selectedCardIndex={selectedCardIndex}";
+		Console.WriteLine($"[DEBUG] SelectCardForPlayer called: playerIndex={playerIndex}, cardIndex={cardIndex}");
+		Console.WriteLine($"[DEBUG] After set: selectedPlayerIndex={selectedPlayerIndex}, selectedCardIndex={selectedCardIndex}");
+		if (engine != null && engine.State != null)
 		{
+			if (playerIndex < 0 || playerIndex >= engine.State.PlayerHands.Count)
+			{
+				selectCardError = $"Invalid player index: {playerIndex}";
+				StateHasChanged();
+				return;
+			}
+			if (cardIndex < 0 || cardIndex >= engine.State.PlayerHands[playerIndex].Count)
+			{
+				selectCardError = $"Invalid card index: {cardIndex} for player {playerIndex}";
+				StateHasChanged();
+				return;
+			}
 			var card = engine.State.PlayerHands[playerIndex][cardIndex];
 			HighlightSpaceForCard(card);
 		}
